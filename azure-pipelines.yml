@@ -1,0 +1,41 @@
+trigger:
+  branches:
+    include:
+      - Master  
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureSubscription: 'b0b74565-972e-4b7b-ba11-c05809f023bd'
+  environmentName: 'dev'
+  resourceName: 'octopus'
+  filePath: 'files/dev' 
+
+stages:
+- stage: Deploy
+  displayName: 'Deploy to Azure Environment'
+  jobs:
+  - deployment: DeploymentJob
+    displayName: 'Deploy'
+    environment: $(environmentName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: '$(System.DefaultWorkingDirectory)/$(filePath)'
+              Contents: 'dev'
+              TargetFolder: '\\$(resourceName)\c$'  # Replace with your VM's path
+
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                # Example: Restart a service on the VM
+                az vm run-command invoke --resource-group YourResourceGroup --name $(resourceName) --command-id RunPowerShellScript --scripts "Restart-Service SomeService"
